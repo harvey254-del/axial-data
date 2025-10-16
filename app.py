@@ -130,6 +130,12 @@ async def get_recent_data(limit: int = 10):
 async def docs():
     return {"docs": "Available at http://localhost:8000/docs", "redoc": "http://localhost:8000/redoc"}
 
+# Production: Use PORT from environment
+import os
+if __name__ == "__main__":
+    port = int(os.getenv("PORT", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=port, reload=False)
+
 if __name__ == "__main__":
     if not service_client:
         print("❌ Cannot start - Supabase not connected. Check .env file.")
