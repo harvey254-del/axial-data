@@ -7,121 +7,132 @@ from langdetect import detect, LangDetectException
 from dotenv import load_dotenv
 import uvicorn
 
-# Load environment variables FIRST
+# -------------------------------------------------------------------
+# 1️⃣ Load environment variables
+# -------------------------------------------------------------------
 load_dotenv()
 
+# -------------------------------------------------------------------
+# 2️⃣ Initialize FastAPI
+# -------------------------------------------------------------------
 app = FastAPI(title="Axial Data API", version="1.0.0")
 
-# CORS for frontend
+# -------------------------------------------------------------------
+# 3️⃣ Enable CORS for frontend
+# -------------------------------------------------------------------
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Update for production
+    allow_origins=["*"],  # In production, restrict this
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Get environment variables
+# -------------------------------------------------------------------
+# 4️⃣ Load Supabase environment variables
+# -------------------------------------------------------------------
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY")
 SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 
-# Debug: Check if keys loaded
 print("🔍 Environment check:")
 print(f"SUPABASE_URL: {'✅' if SUPABASE_URL else '❌'}")
 print(f"SUPABASE_ANON_KEY: {'✅' if SUPABASE_ANON_KEY else '❌'} ({len(SUPABASE_ANON_KEY or '')} chars)")
 print(f"SUPABASE_SERVICE_ROLE_KEY: {'✅' if SUPABASE_SERVICE_ROLE_KEY else '❌'} ({len(SUPABASE_SERVICE_ROLE_KEY or '')} chars)")
 
-# Initialize clients
+# -------------------------------------------------------------------
+# 5️⃣ Initialize Supabase clients
+# -------------------------------------------------------------------
 supabase_client = None
 service_client = None
 
 def create_supabase_clients():
+    """Initialize Supabase anon + service clients safely."""
     global supabase_client, service_client
-    
-    if not all([SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY]):
+
+    if not (SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY):
         print("❌ Missing required environment variables!")
         return
-    
+
     try:
-        # Service client for writes (bypasses RLS)
+        # Service client (writes / admin)
         service_client = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
-        # Test service client with a simple query
-        test_resp = service_client.table("data_items").select("id").limit(1).execute()
-        if test_resp.data is not None:
-            print("✅ Service client connected!")
-        else:
-            print("⚠️ Service client connected but table may be empty or inaccessible.")
-        
-        # Anon client for reads
+        test = service_client.table("data_items").select("id").limit(1).execute()
+        print("✅ Service client connected!" if test.data is not None else "⚠️ Connected, but table empty or restricted.")
+
+        # Anon client (reads / public)
         if SUPABASE_ANON_KEY:
             supabase_client = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
             print("✅ Anon client connected")
         else:
-            print("⚠️ No anon key - reads may be limited")
-            
+            print("⚠️ Missing anon key — only service client active.")
     except Exception as e:
         print(f"❌ Supabase connection failed: {e}")
-        service_client = None
         supabase_client = None
+        service_client = None
 
 create_supabase_clients()
 
+# -------------------------------------------------------------------
+# 6️⃣ Define request model
+# -------------------------------------------------------------------
 class IngestRequest(BaseModel):
     source: str
     content: str
 
+# -------------------------------------------------------------------
+# 7️⃣ Routes
+# -------------------------------------------------------------------
 @app.get("/")
 async def root():
+    """Health check endpoint."""
     return {
-        "message": "Axial Data API running! 🚀",
+        "message": "Axial Data API running 🚀",
         "supabase_connected": bool(service_client),
         "version": "1.0.0"
     }
 
 @app.post("/ingest")
 async def ingest_data(payload: IngestRequest):
+    """Insert a new content item into Supabase."""
     if not service_client:
         raise HTTPException(status_code=500, detail="Supabase service client not available")
-    
+
     try:
-        # Language detection
         try:
             lang = detect(payload.content)
         except LangDetectException:
             lang = "unknown"
-        
-        # Auto-labeling (placeholder)
+
+        # Placeholder auto-labels
         labels = ["africa", "tech", "pending"]
-        
-        # Prepare data
+
         item = {
             "source": payload.source,
             "content": payload.content,
             "language_code": lang,
             "labels": labels
         }
-        
-        # Insert to Supabase
+
         response = service_client.table("data_items").insert(item).execute()
-        
         if response.data:
             inserted_item = response.data[0]
-            print(f"✅ Inserted: {inserted_item.get('id', 'unknown')}")
+            print(f"✅ Inserted record ID: {inserted_item.get('id', 'unknown')}")
             return {"status": "success", "item": inserted_item}
         else:
-            raise HTTPException(status_code=500, detail="Insert failed - no data returned")
-            
+            raise HTTPException(status_code=500, detail="Insert failed — no data returned")
+
     except Exception as e:
         print(f"❌ Ingest error: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Processing failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Ingest failed: {str(e)}")
 
 @app.get("/data")
 async def get_recent_data(limit: int = 10):
+    """Fetch recent records from Supabase."""
     client = supabase_client or service_client
     if not client:
         raise HTTPException(status_code=500, detail="No database client available")
-    
+
     try:
         response = client.table("data_items").select("*").order("created_at", desc=True).limit(limit).execute()
         return {"status": "success", "data": response.data or [], "count": len(response.data or [])}
@@ -129,14 +140,20 @@ async def get_recent_data(limit: int = 10):
         raise HTTPException(status_code=500, detail=f"Query failed: {str(e)}")
 
 @app.get("/docs")
-async def docs():
-    return {"docs": "Available at http://localhost:8000/docs", "redoc": "http://localhost:8000/redoc"}
+async def docs_link():
+    """Simple documentation endpoint."""
+    return {
+        "docs": "/docs",
+        "redoc": "/redoc"
+    }
 
-# Production: Use PORT from environment
+# -------------------------------------------------------------------
+# 8️⃣ Launch the app (for Railway or local)
+# -------------------------------------------------------------------
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 8000))
     if not service_client:
-        print("❌ Cannot start - Supabase not connected. Check .env file.")
+        print("❌ Cannot start — Supabase not connected. Check .env or Railway Variables.")
     else:
-        print("🚀 Starting Axial Data API...")
-        uvicorn.run(app, host="0.0.0.0", port=port, reload=True)
+        print("🚀 Starting Axial Data API on port", port)
+        uvicorn.run("app:app", host="0.0.0.0", port=port)
