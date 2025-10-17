@@ -1,0 +1,26 @@
+
+(node:16068) [DEP_WEBPACK_DEV_SERVER_ON_AFTER_SETUP_MIDDLEWARE] DeprecationWarning: 'onAfterSetupMiddleware' option is deprecated. Please use the 'setupMiddlewares' option.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:16068) [DEP_WEBPACK_DEV_SERVER_ON_BEFORE_SETUP_MIDDLEWARE] DeprecationWarning: 'onBeforeSetupMiddleware' option is deprecated. Please use the 'setupMiddlewares' option.
+Starting the development server...
+Failed to compile.
+
+Module not found: Error: Can't resolve '@supabase/supabase-js' in 'C:\Users\Alpha_XI\Desktop\axial-data\frontend\src'
+ERROR in ./src/App.js 6:0-53
+Module not found: Error: Can't resolve '@supabase/supabase-js' in 'C:\Users\Alpha_XI\Desktop\axial-data\frontend\src'
+
+ERROR in ./src/App.js 7:0-26
+Module not found: Error: Can't resolve 'axios' in 'C:\Users\Alpha_XI\Desktop\axial-data\frontend\src'
+
+webpack compiled with 2 errors
+Compiling...
+Failed to compile.
+
+Module not found: Error: Can't resolve '@supabase/supabase-js' in 'C:\Users\Alpha_XI\Desktop\axial-data\frontend\src'
+ERROR in ./src/App.js 6:0-53
+Module not found: Error: Can't resolve '@supabase/supabase-js' in 'C:\Users\Alpha_XI\Desktop\axial-data\frontend\src'
+
+ERROR in ./src/App.js 7:0-26
+Module not found: Error: Can't resolve 'axios' in 'C:\Users\Alpha_XI\Desktop\axial-data\frontend\src'
+
+webpack compiled with 2 errors
