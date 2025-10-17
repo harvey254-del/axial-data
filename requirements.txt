@@ -1,6 +1,6 @@
 fastapi==0.104.1
 uvicorn[standard]==0.24.0
-supabase==1.2.0              # FIXED: 2.0.0 broken
+supabase==1.0.3              # FIXED: 2.0.0 broken
 python-dotenv==1.0.0
 langdetect==1.0.9
 pydantic==2.4.2
